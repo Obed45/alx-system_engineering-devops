@@ -1,16 +1,12 @@
 #!/usr/bin/env bash
-# Installs HAProxy version 2.6 with the following configurations:
 
-apt-get install -y software-properties-common
-add-apt-repository -y ppa:vbernat/haproxy-2.6
+# Install HAProxy
 apt-get update
-apt-get install -y haproxy=2.6.\*
+apt-get install -y haproxy
 
-echo "ENABLED=1" >> /etc/default/haproxy
-mv /etc/haproxy/haproxy.cfg{,.original}
-touch /etc/haproxy/haproxy.cfg
-
-printf %s "global
+# Configure HAProxy
+cat <<EOF > /etc/haproxy/haproxy.cfg
+global
     log 127.0.0.1 local0 notice
     maxconn 2000
     user haproxy
@@ -28,16 +24,19 @@ defaults
     timeout client  30
     timeout server  30
 
-listen hbnb
-    bind 0.0.0.0:80
-    mode http
-    stats enable
-    stats uri /haproxy?stats
-    balance roundrobin
-    option http-keep-alive
-    option forwardfor
-	server 159825-web-01 54.197.64.149:80 check
-	server 159825-web-02 100.26.240.19:80 check
-" >> /etc/haproxy/haproxy.cfg
+frontend http-in
+    bind *:80
+    default_backend servers
 
+backend servers
+    balance roundrobin
+    server web-01 [STUDENT_ID]-web-01:80 check
+    server web-02 [STUDENT_ID]-web-02:80 check
+EOF
+
+# Enable HAProxy init script
+sed -i 's/ENABLED=0/ENABLED=1/' /etc/default/haproxy
+
+# Restart HAProxy service
 service haproxy restart
+
